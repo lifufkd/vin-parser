@@ -1,6 +1,4 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import json
-import os
 
 from src.schemas.enums import LoggerLevels
 
@@ -16,6 +14,14 @@ class LoggerSettings(BaseSettings):
         env_file=".env",
         extra="ignore"
     )
+
+
+class CORSSettings(BaseSettings):
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: list[str] = ["*"]
+    CORS_ALLOW_HEADERS: list[str] = ["*"]
+    CORS_ALLOWED_ORIGINS: list[str] = []
+
 
 
 class RedisSettings(BaseSettings):
@@ -48,6 +54,19 @@ class NsisParserSettings(BaseSettings):
     PLATE_NUMBER_SELECTOR: str
     VIN_NUMBER_SELECTOR: str
     SEND_FORM_BTN_SELECTOR: str
+    RESULT_DATA_MODAL_WINDOW_SELECTOR: str
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore"
+    )
+
+
+class BrowserSettings(BaseSettings):
+    USE_PROXY_BROWSER: bool = False
+    USER_AGENT: str
+    FETCH_RETRIES_COUNT: int = 3
+    FETCH_RETRY_DELAY: int = 2
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -59,6 +78,7 @@ class GenericSettings(BaseSettings):
     PROXIES_FILE_PATH: str = "proxies.txt"
     HEADLESS: bool = True
     TIMEOUT: float = 10
+    THREADS: int = 1
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -67,6 +87,8 @@ class GenericSettings(BaseSettings):
 
 
 logger_settings = LoggerSettings()
+cors_settings = CORSSettings()
+browser_settings = BrowserSettings()
 redis_settings = RedisSettings()
 nsis_parser = NsisParserSettings()
 generic_settings = GenericSettings()

@@ -2,6 +2,7 @@ from io import BytesIO
 from typing import Type, TypeVar
 from openpyxl import load_workbook, Workbook
 from pydantic import BaseModel
+from datetime import datetime
 from loguru import logger
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -21,19 +22,20 @@ class ExcelLoader:
 
             for row in ws.iter_rows(min_row=2, values_only=True):
                 row_dict = {}
-                for field in model.model_fields.keys():
-                    if field in headers:
-                        idx = headers.index(field)
-                        row_dict[field] = row[idx]
+                for field_name, field_info in model.model_fields.items():
+                    if field_name in headers:
+                        idx = headers.index(field_name)
+                        value = row[idx]
+                        row_dict[field_name] = value
                     else:
-                        row_dict[field] = None
-
+                        row_dict[field_name] = None
                 try:
                     results.append(model(**row_dict))
-                except:
+                except Exception:
                     logger.debug(f"Row: {row_dict} is invalid for model: {model}")
+
         except Exception as e:
-            logger.critical(f"Error loading excel file {excel_bytes}: {e}")
+            logger.critical(f"Error loading excel file: {e}")
             return None
 
         return results

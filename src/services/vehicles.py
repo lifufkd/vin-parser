@@ -1,3 +1,4 @@
+import asyncio
 from loguru import logger
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
@@ -13,26 +14,27 @@ class VehiclesService:
         self.browser_session_locator = None
 
     async def _find_vehicles_info(self, vehicles: list[Vehicle], search_query: FindVehicle) -> list[VehicleInfo]:
-        results = []
         nsis_parser = NsisParser()
+        semaphore = asyncio.Semaphore(generic_settings.THREADS)
 
-        for vehicle in vehicles:
-            try:
-                raw_vehicle_info = await self.browser_session_locator.allocate(
-                    nsis_parser.parse,
-                    vehicle,
-                    search_query,
-                    generic_settings.TIMEOUT
-                )
-
-                results.append(
-                    VehicleInfo(
-                        **raw_vehicle_info
+        async def process_vehicle(vehicle: Vehicle):
+            async with semaphore:
+                try:
+                    raw_vehicle_info = await self.browser_session_locator.allocate(
+                        nsis_parser.parse,
+                        vehicle,
+                        search_query,
+                        generic_settings.TIMEOUT
                     )
-                )
-            except Exception as e:
-                logger.warning(f"Error processing vehicle info for vehicle {vehicle}: {e}")
+                    return VehicleInfo(**raw_vehicle_info)
+                except Exception as e:
+                    logger.warning(f"Error processing vehicle info for vehicle {vehicle}: {e}")
+                    return None
 
+        tasks = [asyncio.create_task(process_vehicle(vehicle)) for vehicle in vehicles]
+        results_list = await asyncio.gather(*tasks)
+
+        results = [res for res in results_list if res is not None]
         return results
 
     async def search(self, vehicles: list[Vehicle], search_query: FindVehicle) -> list[VehicleInfo]:

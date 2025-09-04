@@ -3,8 +3,7 @@ from loguru import logger
 
 from src.core.proxy_manager import ProxyManager
 from src.core.utils import format_proxy
-from src.core.config import generic_settings
-from playwright._impl._errors import RequestFailed, ResponseError, WebSocketError, TimeoutError
+from src.core.config import browser_settings
 
 
 class BrowserSessionLocator:
@@ -17,20 +16,20 @@ class BrowserSessionLocator:
         proxy = None
         proxy_manager = ProxyManager()
 
-        selected_proxy = await proxy_manager.get_next_proxy() if generic_settings.USE_PROXY_BROWSER else None
+        selected_proxy = await proxy_manager.get_next_proxy() if browser_settings.USE_PROXY_BROWSER else None
         client_kwargs = {
-            "user_agent": generic_settings.USER_AGENT
+            "user_agent": browser_settings.USER_AGENT
         }
 
         if selected_proxy:
             proxy = format_proxy(selected_proxy)
             client_kwargs["proxy"] = proxy
 
-        for attempt in range(generic_settings.FETCH_RETRIES_COUNT):
+        for attempt in range(browser_settings.FETCH_RETRIES_COUNT):
             if selected_proxy:
-                logger.debug(f"Try {attempt + 1}/{generic_settings.FETCH_RETRIES_COUNT}. Run with proxy: {proxy}")
+                logger.debug(f"Try {attempt + 1}/{browser_settings.FETCH_RETRIES_COUNT}. Run with proxy: {proxy}")
             else:
-                logger.debug(f"Try {attempt + 1}/{generic_settings.FETCH_RETRIES_COUNT}")
+                logger.debug(f"Try {attempt + 1}/{browser_settings.FETCH_RETRIES_COUNT}")
 
             try:
                 context = await self.browser_session.new_context(
@@ -48,7 +47,7 @@ class BrowserSessionLocator:
                     await proxy_manager.remove_proxy(selected_proxy)
                     extracted_proxy = True
 
-                backoff = generic_settings.FETCH_RETRY_DELAY * (2 ** attempt)
+                backoff = browser_settings.FETCH_RETRY_DELAY * (2 ** attempt)
                 if selected_proxy:
                     logger.warning(f"Proxy {selected_proxy} has been temporarily banned, retry after {backoff} seconds")
                 else:

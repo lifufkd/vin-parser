@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional
-from datetime import date
+from datetime import datetime
 
 
 class FindVehicle(BaseModel):
-    use_vin_number: bool
-    use_plate_number: bool
+    use_vin_number: Optional[bool] = Field(None)
+    use_plate_number: Optional[bool] = Field(None)
 
     @model_validator(mode="after")
     def exactly_one_required(self) -> "FindVehicle":
@@ -17,19 +17,19 @@ class FindVehicle(BaseModel):
 
 
 class Vehicle(BaseModel):
-    vin_number: Optional[str] = Field(None, alias='vin')
-    plate_number: Optional[str] = Field(None, alias='number')
-    date: Optional[date] = Field(alias='datetime')
+    vin_number: Optional[str] = Field(None)
+    plate_number: Optional[str] = Field(None)
+    date: Optional[datetime] = Field()
 
 
 class VehicleInfo(BaseModel):
-    policy_series: Optional[str] = Field(None, alias='policySeries')
-    policy_number: Optional[str] = Field(None, alias='policyNumber')
-    osago_status: Optional[str] = Field(None, alias='osagoStatus')
-    usage_period: Optional[str] = Field(None, alias='usagePeriod')
-    vehicle_model: Optional[str] = Field(None, alias='vehicleModel')
+    policy_series: Optional[str] = Field(None)
+    policy_number: Optional[str] = Field(None)
+    osago_status: Optional[str] = Field(None)
+    usage_period: Optional[str] = Field(None)
+    vehicle_model: Optional[str] = Field(None)
     vin: Optional[str]
     license_plate: Optional[str]
-    insurance_company: Optional[str] = Field(None, alias='insuranceCompany')
-    belarus_extension: Optional[str] = Field(None, alias='belarusExtension')
-    data_date: Optional[str] = Field(None, alias='dataDate')
+    insurance_company: Optional[str] = Field(None)
+    belarus_extension: Optional[str] = Field(None)
+    data_date: Optional[str] = Field(None)

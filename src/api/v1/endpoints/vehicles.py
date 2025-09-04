@@ -12,12 +12,29 @@ from src.schemas.vehicle import FindVehicle, Vehicle, VehicleInfo
 vehicles_router = APIRouter()
 
 
-@vehicles_router.post("/vehicles/search", status_code=status.HTTP_200_OK)
+@vehicles_router.post("/search", status_code=status.HTTP_200_OK)
 async def find_vehicles(
     search_query: FindVehicle = Query(),
     file: UploadFile = File(),
     vehicles_service: VehiclesService = Depends(get_vehicles_service),
 ):
+    ALLOWED_CONTENT_TYPES = [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel"
+    ]
+
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only Excel files (.xlsx, .xls) are allowed"
+        )
+
+    if not (file.filename.endswith(".xlsx") or file.filename.endswith(".xls")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must have .xlsx or .xls extension"
+        )
+
     excel_loader = ExcelLoader()
 
     file_content: bytes = await file.read()

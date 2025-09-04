@@ -1,8 +1,8 @@
 from playwright.async_api import Page
-from src.schemas.vehicle import Vehicle, FindVehicle
 from loguru import logger
 
 from src.core.config import nsis_parser
+from src.schemas.vehicle import Vehicle, FindVehicle
 
 
 class NsisParser:
@@ -19,26 +19,43 @@ class NsisParser:
         "Дата запроса": "data_date"
     }
 
-    async def _insert_search_query(self, vehicle: Vehicle, search_query: FindVehicle, browser_tab: Page) -> bool:
+    async def _insert_search_query(
+            self,
+            vehicle: Vehicle,
+            search_query: FindVehicle,
+            browser_tab: Page
+    ) -> bool:
         try:
             if search_query.use_vin_number:
-                vin_input = browser_tab.locator(nsis_parser.VIN_NUMBER_SELECTOR)
+                vin_input = browser_tab.locator(nsis_parser.VIN_NUMBER_SELECTOR).first
+                await vin_input.scroll_into_view_if_needed()
                 await vin_input.fill(vehicle.vin_number)
+
             elif search_query.use_plate_number:
-                plate_number_input = browser_tab.locator(nsis_parser.PLATE_NUMBER_SELECTOR)
+                plate_number_input = browser_tab.locator(nsis_parser.PLATE_NUMBER_SELECTOR).first
+                await plate_number_input.scroll_into_view_if_needed()
                 await plate_number_input.fill(vehicle.plate_number)
+
             else:
                 logger.warning(f"No search method selected: {search_query}")
                 return False
+
+            date_el = browser_tab.locator("input[placeholder='Выберите дату']").first
+            await date_el.scroll_into_view_if_needed()
+            await date_el.fill(vehicle.date.strftime("%d.%m.%Y"))
+
         except Exception as e:
-            logger.error(f"Error insert search query: {search_query} for vehicle: {vehicle}. Error: {e}")
+            logger.error(
+                f"Error insert search query: {search_query} "
+                f"for vehicle: {vehicle}. Error: {e}"
+            )
             return False
 
         return True
 
     async def _send_form(self, browser_tab: Page) -> bool:
         try:
-            await browser_tab.locator(nsis_parser.SEND_FORM_BTN_SELECTOR).click()
+            await browser_tab.locator(nsis_parser.SEND_FORM_BTN_SELECTOR).first.click()
             return True
         except Exception as e:
             logger.error(f"Error send form: {e}")
@@ -78,7 +95,7 @@ class NsisParser:
         return data
 
     async def parse(self, vehicle: Vehicle, search_query: FindVehicle, timeout: float, browser_tab: Page) -> dict | None:
-        await browser_tab.goto(nsis_parser.SITE_URL, wait_until="networkidle", timeout=timeout * 10 * 1000)
+        await browser_tab.goto(nsis_parser.SITE_URL, wait_until="load", timeout=timeout * 10 * 1000)
 
         status = await self._insert_search_query(vehicle, search_query, browser_tab)
         if not status:
