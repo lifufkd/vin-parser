@@ -1,6 +1,7 @@
 import asyncio
 from loguru import logger
 
+from src.core.exceptions import SolidBanError
 from src.core.proxy_manager import ProxyManager
 from src.core.utils import format_proxy
 from src.core.config import browser_settings
@@ -42,6 +43,17 @@ class BrowserSessionLocator:
                     await proxy_manager.return_proxy(selected_proxy)
 
                 return result
+            except SolidBanError:
+                if selected_proxy:
+                    logger.warning(f"Request limit is reached for proxy: {selected_proxy}, existing...")
+                else:
+                    logger.warning(f"Request limit is reached, existing...")
+
+                if not extracted_proxy and selected_proxy:
+                    await proxy_manager.remove_proxy(selected_proxy)
+                    extracted_proxy = True
+
+                break
             except Exception:
                 if not extracted_proxy and selected_proxy:
                     await proxy_manager.remove_proxy(selected_proxy)

@@ -55,6 +55,8 @@ class NsisParserSettings(BaseSettings):
     VIN_NUMBER_SELECTOR: str
     SEND_FORM_BTN_SELECTOR: str
     RESULT_DATA_MODAL_WINDOW_SELECTOR: str
+    ERROR_DATA_MODAL_WINDOW_SELECTOR: str
+    BLOCK_PAGE_URL: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

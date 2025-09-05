@@ -1,6 +1,10 @@
+import asyncio
+from datetime import datetime
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import Page
 from loguru import logger
 
+from src.core.exceptions import SoftBanError, SolidBanError
 from src.core.config import nsis_parser
 from src.schemas.vehicle import Vehicle, FindVehicle
 
@@ -40,9 +44,22 @@ class NsisParser:
                 logger.warning(f"No search method selected: {search_query}")
                 return False
 
-            date_el = browser_tab.locator("input[placeholder='Выберите дату']").first
-            await date_el.scroll_into_view_if_needed()
-            await date_el.fill(vehicle.date.strftime("%d.%m.%Y"))
+            date_str = vehicle.date.strftime("%Y-%m-%d")
+            selector = "input[placeholder='Выберите дату']"
+            await browser_tab.evaluate(
+                """({selector, dateStr}) => {
+                    const visibleInput = document.querySelector(selector);
+                    if (!visibleInput) return;
+
+                    const hiddenInput = visibleInput.closest('.staticContainer').querySelector('input[type="hidden"]');
+                    if (!hiddenInput) return;
+
+                    hiddenInput.value = dateStr;
+                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }""",
+                {"selector": selector, "dateStr": date_str}
+            )
 
         except Exception as e:
             logger.error(
@@ -61,13 +78,47 @@ class NsisParser:
             logger.error(f"Error send form: {e}")
             return False
 
+    async def wait_for_one_of(self, selectors: list[str], timeout: float, browser_tab):
+        tasks = {
+            selector: asyncio.create_task(
+                browser_tab.wait_for_selector(selector, state="visible", timeout=timeout * 1000)
+            )
+            for selector in selectors
+        }
+
+        done, pending = await asyncio.wait(tasks.values(), return_when=asyncio.FIRST_COMPLETED)
+
+        for task in pending:
+            task.cancel()
+
+        for selector, task in tasks.items():
+            if task in done:
+                try:
+                    element = await task
+                    return element, selector
+                except PlaywrightTimeoutError:
+                    continue
+
+        return None, None
+
     async def _get_vehicle_data(self, timeout: float, browser_tab: Page) -> dict | None:
         data = {}
 
         try:
-            await browser_tab.wait_for_selector(nsis_parser.RESULT_DATA_MODAL_WINDOW_SELECTOR,
-                                                state="visible",
-                                                timeout=timeout * 10 * 1000)
+            element, selector = await self.wait_for_one_of(
+                [
+                    nsis_parser.RESULT_DATA_MODAL_WINDOW_SELECTOR,
+                    nsis_parser.ERROR_DATA_MODAL_WINDOW_SELECTOR
+                ],
+                timeout,
+                browser_tab
+            )
+
+            if selector:
+                if selector == nsis_parser.ERROR_DATA_MODAL_WINDOW_SELECTOR:
+                    raise SoftBanError()
+            else:
+                raise SoftBanError()
 
             date_el = await browser_tab.locator("#resp .policyDataModal__dateSlot span").inner_text()
             data["data_date"] = date_el.strip().replace("на ", "")
@@ -88,6 +139,8 @@ class NsisParser:
                 else:
                     logger.warning(f"Unknown label found: {label_raw}")
 
+        except SoftBanError:
+            raise
         except Exception as e:
             logger.error(f"Error get vehicle data: {e}")
             return None
@@ -96,6 +149,8 @@ class NsisParser:
 
     async def parse(self, vehicle: Vehicle, search_query: FindVehicle, timeout: float, browser_tab: Page) -> dict | None:
         await browser_tab.goto(nsis_parser.SITE_URL, wait_until="load", timeout=timeout * 10 * 1000)
+        if browser_tab.url == nsis_parser.BLOCK_PAGE_URL:
+            raise SolidBanError()
 
         status = await self._insert_search_query(vehicle, search_query, browser_tab)
         if not status:

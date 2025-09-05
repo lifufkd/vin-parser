@@ -21,6 +21,9 @@ class ExcelLoader:
             results: list[ModelT] = []
 
             for row in ws.iter_rows(min_row=2, values_only=True):
+                if not any(cell not in (None, "") for cell in row):
+                    continue
+
                 row_dict = {}
                 for field_name, field_info in model.model_fields.items():
                     if field_name in headers:
