@@ -1,0 +1,31 @@
+services:
+  photo-search:
+    image: ghcr.io/lifufkd/vin-parser:latest
+    build: .
+    env_file:
+      - ".env"
+    ports:
+      - 8000:8000
+    depends_on:
+      - redis
+    volumes:
+      - ./proxies.txt:/app/proxies.txt
+      - ./app_data:/app/app_data
+    environment:
+      - REDIS_HOST=redis
+    networks:
+      - backend
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+volumes:
+  redis_data:
+
+networks:
+  backend:

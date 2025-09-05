@@ -1,0 +1,48 @@
+name: Publish Docker Image
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Docker image and push to repositories
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t ghcr.io/${{ github.repository_owner }}/vin-parser:latest \
+            --push .
+
+#      - name: Setup SSH key
+#        uses: webfactory/ssh-agent@v0.5.4
+#        with:
+#          ssh-private-key: ${{ secrets.SSH_KEY }}
+#
+#      - name: Deploy to server
+#        run: |
+#          ssh -o StrictHostKeyChecking=no "${{ secrets.SERVER_USER }}"@"${{ secrets.SERVER_IP }}" << 'EOF'
+#            cd /root/photo-search
+#
+#            git fetch origin
+#            git reset --hard origin/master
+#
+#            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+#
+#            docker compose pull
+#
+#            docker compose up -d --remove-orphans
+#          EOF
