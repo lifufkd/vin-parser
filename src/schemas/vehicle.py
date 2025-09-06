@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from datetime import datetime
 
+from src.schemas.enums import SearchStatus
+
 
 class FindVehicle(BaseModel):
     use_vin_number: Optional[bool] = Field(None)
@@ -28,8 +30,9 @@ class VehicleInfo(BaseModel):
     osago_status: Optional[str] = Field(None)
     usage_period: Optional[str] = Field(None)
     vehicle_model: Optional[str] = Field(None)
-    vin: Optional[str]
-    license_plate: Optional[str]
+    vin: Optional[str] = Field(None)
+    license_plate: Optional[str] = Field(None)
     insurance_company: Optional[str] = Field(None)
     belarus_extension: Optional[str] = Field(None)
     data_date: Optional[str] = Field(None)
+    search_status: SearchStatus = SearchStatus.FAILURE

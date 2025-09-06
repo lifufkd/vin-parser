@@ -7,34 +7,53 @@ from src.core.config import generic_settings
 from src.schemas.vehicle import Vehicle, FindVehicle, VehicleInfo
 from src.services.browser_session_alocator import BrowserSessionLocator
 from src.parsers.nsis import NsisParser
+from src.core.exceptions import AllProxiesBanedError
 
 
 class VehiclesService:
     def __init__(self):
         self.browser_session_locator = None
 
-    async def _find_vehicles_info(self, vehicles: list[Vehicle], search_query: FindVehicle) -> list[VehicleInfo]:
+    async def _find_vehicles_info(
+            self, vehicles: list[Vehicle], search_query: FindVehicle
+    ) -> list[VehicleInfo]:
         nsis_parser = NsisParser()
         semaphore = asyncio.Semaphore(generic_settings.THREADS)
 
+        def collect_result(task: asyncio.Task):
+            if not task.cancelled() and not task.exception():
+                result = task.result()
+                if result:
+                    results.append(result)
+
         async def process_vehicle(vehicle: Vehicle):
             async with semaphore:
-                try:
-                    raw_vehicle_info = await self.browser_session_locator.allocate(
-                        nsis_parser.parse,
-                        vehicle,
-                        search_query,
-                        generic_settings.TIMEOUT
-                    )
-                    return VehicleInfo(**raw_vehicle_info)
-                except Exception as e:
-                    logger.warning(f"Error processing vehicle info for vehicle {vehicle}: {e}")
+                raw_vehicle_info = await self.browser_session_locator.allocate(
+                    nsis_parser.parse,
+                    vehicle,
+                    search_query,
+                    generic_settings.TIMEOUT,
+                )
+                await asyncio.sleep(generic_settings.REQUESTS_DELAY)
+
+                if not raw_vehicle_info:
                     return None
+                try:
+                    vehicle_info = VehicleInfo(**raw_vehicle_info)
+                    return vehicle_info
+                except Exception as e:
+                    logger.warning(f"Error converting vehicle info: {e}")
 
-        tasks = [asyncio.create_task(process_vehicle(vehicle)) for vehicle in vehicles]
-        results_list = await asyncio.gather(*tasks)
+        results: list[VehicleInfo] = []
 
-        results = [res for res in results_list if res is not None]
+        try:
+            async with asyncio.TaskGroup() as tg:
+                for vehicle in vehicles:
+                    tg.create_task(process_vehicle(vehicle)).add_done_callback(collect_result)
+        except AllProxiesBanedError:
+            logger.critical("All proxies are banned. Stopping all tasks.")
+            raise
+
         return results
 
     async def search(self, vehicles: list[Vehicle], search_query: FindVehicle) -> list[VehicleInfo]:

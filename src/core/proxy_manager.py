@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from src.core.config import generic_settings
@@ -8,6 +9,7 @@ from src.core.redis_client import redis_client
 class ProxyManager:
     def __init__(self):
         self.proxies_key = 'proxy_manager:proxies'
+        self.temp_key = 'proxy_manager:temp_proxies'
 
     async def init_proxies(self):
         await redis_client.delete(self.proxies_key)
@@ -29,7 +31,23 @@ class ProxyManager:
 
     async def remove_proxy(self, proxy_to_remove: str) -> bool:
         removed_count = await redis_client.lrem(self.proxies_key, 0, proxy_to_remove)
+        if removed_count > 0:
+            await redis_client.set(f"{self.temp_key}:{proxy_to_remove}", proxy_to_remove, ex=3600)
         return removed_count > 0
+
+    async def _reclaim_proxies(self):
+        keys = await redis_client.keys(f"{self.temp_key}:*")
+        for key in keys:
+            proxy = await redis_client.get(key)
+            if proxy:
+                proxy = proxy.decode() if isinstance(proxy, bytes) else proxy
+                await redis_client.rpush(self.proxies_key, proxy)
+                await redis_client.delete(key)
+
+    async def start_reclaimer(self, interval: int = 60):
+        while True:
+            await self._reclaim_proxies()
+            await asyncio.sleep(interval)
 
     async def return_proxy(self, proxy: str) -> None:
         proxies = await self.get_all_proxies()

@@ -1,7 +1,7 @@
 import asyncio
 from loguru import logger
 
-from src.core.exceptions import SolidBanError
+from src.core.exceptions import SolidBanError, AllProxiesBanedError
 from src.core.proxy_manager import ProxyManager
 from src.core.utils import format_proxy
 from src.core.config import browser_settings
@@ -49,16 +49,15 @@ class BrowserSessionLocator:
                 else:
                     logger.warning(f"Request limit is reached, existing...")
 
+                if not selected_proxy:
+                    raise AllProxiesBanedError()
+
                 if not extracted_proxy and selected_proxy:
                     await proxy_manager.remove_proxy(selected_proxy)
                     extracted_proxy = True
 
                 break
             except Exception:
-                if not extracted_proxy and selected_proxy:
-                    await proxy_manager.remove_proxy(selected_proxy)
-                    extracted_proxy = True
-
                 backoff = browser_settings.FETCH_RETRY_DELAY * (2 ** attempt)
                 if selected_proxy:
                     logger.warning(f"Proxy {selected_proxy} has been temporarily banned, retry after {backoff} seconds")

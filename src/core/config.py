@@ -23,7 +23,6 @@ class CORSSettings(BaseSettings):
     CORS_ALLOWED_ORIGINS: list[str] = []
 
 
-
 class RedisSettings(BaseSettings):
     REDIS_USER: str | None = None
     REDIS_PASSWORD: str | None = None
@@ -56,6 +55,7 @@ class NsisParserSettings(BaseSettings):
     SEND_FORM_BTN_SELECTOR: str
     RESULT_DATA_MODAL_WINDOW_SELECTOR: str
     ERROR_DATA_MODAL_WINDOW_SELECTOR: str
+    NOT_FOUND_DATA_MODAL_WINDOW_SELECTOR: str
     BLOCK_PAGE_URL: str
 
     model_config = SettingsConfigDict(
@@ -80,6 +80,7 @@ class GenericSettings(BaseSettings):
     PROXIES_FILE_PATH: str = "proxies.txt"
     HEADLESS: bool = True
     TIMEOUT: float = 10
+    REQUESTS_DELAY: float = 1
     THREADS: int = 1
 
     model_config = SettingsConfigDict(

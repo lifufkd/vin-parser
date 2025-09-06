@@ -2,7 +2,7 @@ from io import BytesIO
 from typing import Type, TypeVar
 from openpyxl import load_workbook, Workbook
 from pydantic import BaseModel
-from datetime import datetime
+from enum import Enum
 from loguru import logger
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -44,7 +44,7 @@ class ExcelLoader:
         return results
 
     @staticmethod
-    async def save(models: list[ModelT]) -> bytes | None:
+    async def save(models: list) -> bytes | None:
         try:
             if not models:
                 return None
@@ -56,7 +56,14 @@ class ExcelLoader:
             ws.append(headers)
 
             for model in models:
-                ws.append([getattr(model, field) for field in headers])
+                row = []
+                for field in headers:
+                    value = getattr(model, field)
+                    if isinstance(value, Enum):
+                        row.append(value.value)
+                    else:
+                        row.append(value)
+                ws.append(row)
 
             buf = BytesIO()
             wb.save(buf)

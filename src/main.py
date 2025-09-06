@@ -1,8 +1,11 @@
 import uvicorn
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+from src.core.exceptions_handler import app_exception_handler, internal_server_error_handler
+from src.core.exceptions import AppException
 from src.core.proxy_manager import ProxyManager
 from src.api.v1.router import api_v1_router
 from src.core.logger import setup_logger
@@ -14,6 +17,7 @@ async def lifespan(_: FastAPI):
     setup_logger()
     proxy_manager = ProxyManager()
     await proxy_manager.init_proxies()
+    asyncio.create_task(proxy_manager.start_reclaimer())
     yield
 
 
@@ -28,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(api_v1_router, prefix="/api/v1")
+app.add_exception_handler(AppException, app_exception_handler)
 
 
 if __name__ == "__main__":

@@ -9,3 +9,9 @@ class LoggerLevels(Enum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+
+
+class SearchStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    NOT_FOUND = "NOT_FOUND"
