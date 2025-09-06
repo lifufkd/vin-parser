@@ -1,9 +1,9 @@
 import asyncio
-from datetime import datetime
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import Page
 from loguru import logger
 
+from src.schemas.enums import SearchStatus
 from src.core.exceptions import SoftBanError, SolidBanError
 from src.core.config import nsis_parser
 from src.schemas.vehicle import Vehicle, FindVehicle
@@ -101,14 +101,18 @@ class NsisParser:
 
         return None, None
 
-    async def _get_vehicle_data(self, timeout: float, browser_tab: Page) -> dict | None:
+    async def _get_vehicle_data(self, vehicle: Vehicle, timeout: float, browser_tab: Page) -> dict | None:
         data = {}
 
         try:
+            data["vin"] = vehicle.vin_number
+            data["license_plate"] = vehicle.plate_number
+
             element, selector = await self.wait_for_one_of(
                 [
                     nsis_parser.RESULT_DATA_MODAL_WINDOW_SELECTOR,
-                    nsis_parser.ERROR_DATA_MODAL_WINDOW_SELECTOR
+                    nsis_parser.ERROR_DATA_MODAL_WINDOW_SELECTOR,
+                    nsis_parser.NOT_FOUND_DATA_MODAL_WINDOW_SELECTOR
                 ],
                 timeout,
                 browser_tab
@@ -117,6 +121,11 @@ class NsisParser:
             if selector:
                 if selector == nsis_parser.ERROR_DATA_MODAL_WINDOW_SELECTOR:
                     raise SoftBanError()
+                elif selector == nsis_parser.NOT_FOUND_DATA_MODAL_WINDOW_SELECTOR:
+                    data["search_status"] = SearchStatus.NOT_FOUND
+                    return data
+                else:
+                    data["search_status"] = SearchStatus.SUCCESS
             else:
                 raise SoftBanError()
 
@@ -134,10 +143,10 @@ class NsisParser:
                 value = (await value_el.inner_text()).strip()
 
                 key = self.LABEL_MAP.get(label_raw)
-                if key:
+                if key and not data.get(key):
                     data[key] = value
                 else:
-                    logger.warning(f"Unknown label found: {label_raw}")
+                    logger.warning(f"Unknown or existed label found: {label_raw}")
 
         except SoftBanError:
             raise
@@ -160,7 +169,7 @@ class NsisParser:
         if not status:
             return None
 
-        results = await self._get_vehicle_data(timeout, browser_tab)
+        results = await self._get_vehicle_data(vehicle, timeout, browser_tab)
         if not results:
             return None
 
