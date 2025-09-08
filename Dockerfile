@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright/python:v1.55.0-jammy
+FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
     dos2unix \
@@ -15,5 +15,6 @@ RUN dos2unix ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN playwright install
 
 ENTRYPOINT ["./entrypoint.sh"]

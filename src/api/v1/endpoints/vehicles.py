@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from src.dependencies.services import get_vehicles_service
 from src.services.vehicles import VehiclesService
 from src.core.excel import ExcelLoader
-from src.schemas.vehicle import FindVehicle, Vehicle, VehicleInfo
+from src.schemas.vehicle import FindVehicle, Vehicle
 
 
 vehicles_router = APIRouter()

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from src.core.exceptions_handler import app_exception_handler, internal_server_error_handler
+from src.core.exceptions_handler import app_exception_handler
 from src.core.exceptions import AppException
 from src.core.proxy_manager import ProxyManager
 from src.api.v1.router import api_v1_router
@@ -31,8 +31,8 @@ app.add_middleware(
     allow_headers=cors_settings.CORS_ALLOW_HEADERS,
 )
 
-app.include_router(api_v1_router, prefix="/api/v1")
 app.add_exception_handler(AppException, app_exception_handler)
+app.include_router(api_v1_router, prefix="/api/v1")
 
 
 if __name__ == "__main__":

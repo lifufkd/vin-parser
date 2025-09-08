@@ -57,18 +57,23 @@ class VehiclesService:
         return results
 
     async def search(self, vehicles: list[Vehicle], search_query: FindVehicle) -> list[VehicleInfo]:
-        async with Stealth().use_async(async_playwright()) as session:
+        try:
+            async with Stealth().use_async(async_playwright()) as session:
 
-            logger.debug("Launching browser...")
-            browser_session = await session.chromium.launch(
-                headless=generic_settings.HEADLESS,
-                args=[
-                    '--enable-webgl',
-                    '--use-gl=swiftshader',
-                    '--enable-accelerated-2d-canvas'
-                ]
-            )
-            self.browser_session_locator = BrowserSessionLocator(browser_session)
-            logger.debug("Browser successfully launched!")
+                logger.debug("Launching browser...")
+                browser_session = await session.chromium.launch(
+                    headless=generic_settings.HEADLESS,
+                    args=[
+                        '--enable-webgl',
+                        '--use-gl=swiftshader',
+                        '--enable-accelerated-2d-canvas'
+                    ]
+                )
+                self.browser_session_locator = BrowserSessionLocator(browser_session)
+                logger.debug("Browser successfully launched!")
 
-            return await self._find_vehicles_info(vehicles, search_query)
+                return await self._find_vehicles_info(vehicles, search_query)
+        except AllProxiesBanedError:
+            raise
+        except Exception as e:
+            logger.error(f"Error searching vehicles: {e}")
