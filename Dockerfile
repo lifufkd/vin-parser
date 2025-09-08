@@ -22,7 +22,6 @@ RUN apt-get update && apt-get install -y \
     libxfixes3 \
     libxcb1 \
     libexpat1 \
-    libsmime3 \
     libgio-2.0-0 \
     libgobject-2.0-0 \
     libatspi2.0-0 \
@@ -31,7 +30,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
     unzip \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+
 WORKDIR /app
 
 COPY . .
